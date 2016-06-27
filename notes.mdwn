@@ -1,0 +1,71 @@
+morph-to-bb notes
+=================
+
+What data is provided in a morph, and how can it be compared to a recipe?
+
+DEFAULTS
+--------
+
+### build-systems
+
+Many of these have equivalent classes in bitbake that can be inherited.
+Others will be a matter of manually copying the commands.
+
+### split-rules
+
+bitbake has sensible defaults. If necessary, I can override it.
+
+CHUNKS
+------
+
+name
+kind
+configure-commands
+build-commands
+install-commands
+
+Chunks are bitbake packages, usually one is specified in one .bb file.
+
+Simple information here, slightly more complex when I'm merging it
+with the data stored in strata.
+
+STRATA
+------
+
+name
+kind
+build-depends:
+- morph
+chunks:
+- name
+- morph
+- repo
+- ref
+- unpetrify-ref
+- build-system
+- build-depends:
+
+A stratum is a packagegroup, which DEPENDS and RDEPENDS on all the
+chunks (packages) within.
+morph refers to a file that contains the rest of the chunk definition.
+the name fields must match.
+Chunks DEPENDS on the strata (packagegroup) that this straum depends on.
+Chunks DEPENDS and RDEPENDS on the other chunks listed here.
+build-system may mean 'inherit'ing a bbclass.
+
+SYSTEMS
+-------
+
+name
+kind
+description
+arch
+strata:
+- name
+- morph
+configuration-extensions:
+
+I have no idea what to do with arch, currently.
+A system RDEPENDS on all strata listed.
+morph refers to a file path, name must match.
+I have no idea what to do with configuration-extensions, currently.
