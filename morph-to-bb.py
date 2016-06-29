@@ -57,8 +57,15 @@ def parse_system(defs, system_path):
         for stratum_spec in system['strata']:
             parse_stratum(defs, stratum_spec)
 
-def convert_system_to_image(system):
-    return {'name': system['name']+"-system"}
+def convert_system_to_image(recipes, system):
+    image_install = []
+    for stratum_spec in system['strata']:
+        stratum_name = stratum_spec['name'] + "-stratum"
+        image_install.append(stratum_name)
+
+    return {'name': system['name']+"-system",
+            'arch': system['arch'],
+            'image_install': image_install}
 
 def convert_stratum_to_packagegroup(stratum):
     return {'name': stratum['name']+"-stratum"}
@@ -67,15 +74,17 @@ def convert_chunk_to_package(chunk):
     return {'name': chunk['name']+"-chunk"}
 
 def convert_defs_to_recipes(defs, recipes):
-    for system in defs['systems'].itervalues():
-        image = convert_system_to_image(system)
-        recipes['images'][image['name']] = image
-    for stratum in defs['strata'].itervalues():
-        packagegroup = convert_stratum_to_packagegroup(stratum)
-        recipes['packagegroups'][packagegroup['name']] = packagegroup
+    # This ordering is deliberate. generation of packagegroups might require
+    # looking in packages, etc.
     for chunk in defs['chunks'].itervalues():
         package = convert_chunk_to_package(chunk)
         recipes['packages'][package['name']] = package
+    for stratum in defs['strata'].itervalues():
+        packagegroup = convert_stratum_to_packagegroup(stratum)
+        recipes['packagegroups'][packagegroup['name']] = packagegroup
+    for system in defs['systems'].itervalues():
+        image = convert_system_to_image(recipes, system)
+        recipes['images'][image['name']] = image
 
 def write_image(image, images_dir):
     image_text = '''
@@ -83,7 +92,8 @@ SUMMARY = "{name}"
 LICENSE = "foo"
 IMAGE_INSTALL = "{packagegroups}"
 # IMAGE_ROOTFS_SIZE not sure if mandatory
-    '''.format(name=image['name'], packagegroups="TODO")
+    '''.format(name=image['name'],
+            packagegroups=" ".join(image['image_install']))
     image_path = "%s/%s.bb" % (images_dir, image['name'])
     with open(image_path, 'w') as f:
         f.write(image_text)
