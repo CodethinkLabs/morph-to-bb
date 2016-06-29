@@ -79,8 +79,11 @@ def convert_defs_to_recipes(defs, recipes):
 
 def write_image(image, images_dir):
     image_text = '''
-SUMMARY = {name}
-    '''.format(name=image['name'])
+SUMMARY = "{name}"
+LICENSE = "foo"
+IMAGE_INSTALL = "{packagegroups}"
+# IMAGE_ROOTFS_SIZE not sure if mandatory
+    '''.format(name=image['name'], packagegroups="TODO")
     image_path = "%s/%s.bb" % (images_dir, image['name'])
     with open(image_path, 'w') as f:
         f.write(image_text)
