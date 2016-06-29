@@ -57,6 +57,67 @@ def parse_system(defs, system_path):
         for stratum_spec in system['strata']:
             parse_stratum(defs, stratum_spec)
 
+def convert_system_to_image(system):
+    return {'name': system['name']+"-system"}
+
+def convert_stratum_to_packagegroup(stratum):
+    return {'name': stratum['name']+"-stratum"}
+
+def convert_chunk_to_package(chunk):
+    return {'name': chunk['name']+"-chunk"}
+
+def convert_defs_to_recipes(defs, recipes):
+    for system in defs['systems'].itervalues():
+        image = convert_system_to_image(system)
+        recipes['images'][image['name']] = image
+    for stratum in defs['strata'].itervalues():
+        packagegroup = convert_stratum_to_packagegroup(stratum)
+        recipes['packagegroups'][packagegroup['name']] = packagegroup
+    for chunk in defs['chunks'].itervalues():
+        package = convert_chunk_to_package(chunk)
+        recipes['packages'][package['name']] = package
+
+def write_image(image, images_dir):
+    image_text = '''
+SUMMARY = {name}
+    '''.format(name=image['name'])
+    image_path = "%s/%s.bb" % (images_dir, image['name'])
+    with open(image_path, 'w') as f:
+        f.write(image_text)
+
+def write_packagegroup(packagegroup, pg_dir):
+    pg_text = '''
+# packagegroup
+    '''
+    pg_path = "%s/%s.bb" % (pg_dir, packagegroup['name'])
+    with open (pg_path, 'w') as f:
+        f.write(pg_text)
+
+def write_package(package, packages_dir):
+    package_text = '''
+# package
+    '''
+    package_path = "%s/%s.bb" % (packages_dir, package['name'])
+    with open (package_path, 'w') as f:
+        f.write(package_text)
+
+def write_recipes(recipes, recipes_dir):
+    os.makedirs(recipes_dir)
+    images_dir = "%s/images" % recipes_dir
+    packagegroups_dir = "%s/packagegroups" % recipes_dir
+    packages_dir = "%s/packages" % recipes_dir
+
+    os.mkdir(images_dir)
+    os.mkdir(packagegroups_dir)
+    os.mkdir(packages_dir)
+
+    for image in recipes['images'].itervalues():
+        write_image(image, images_dir)
+    for packagegroup in recipes['packagegroups'].itervalues():
+        write_packagegroup(packagegroup, packagegroups_dir)
+    for package in recipes['packages'].itervalues():
+        write_package(package, packages_dir)
+
 def main(argv):
     # Arg 1, a directory to put recipes in
     # Arg 2..., Systems to parse
@@ -72,10 +133,13 @@ def main(argv):
 
     recipes_dir = argv[0]
     defs = {'systems': {}, 'strata': {}, 'chunks': {}}
+    recipes = {'images': {}, 'packagegroups': {}, 'packages': {}}
     for system_path in argv[1:]:
         parse_system(defs, system_path)
 
-    print yaml.dump(defs)
+    convert_defs_to_recipes(defs, recipes)
+
+    write_recipes(recipes, recipes_dir)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
