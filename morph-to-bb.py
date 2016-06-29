@@ -89,7 +89,8 @@ def convert_defs_to_recipes(defs, recipes):
 def write_image(image, images_dir):
     image_text = '''
 SUMMARY = "{name}"
-LICENSE = "foo"
+inherit core-image #This might need to be just "image" with more stuff set
+# LICENSE = "foo" Might already be set by other classes
 IMAGE_INSTALL = "{packagegroups}"
 # IMAGE_ROOTFS_SIZE not sure if mandatory
     '''.format(name=image['name'],
