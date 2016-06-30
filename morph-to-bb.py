@@ -10,6 +10,7 @@ recipes, and systems... is 1 or more systems identified by file path, which
 recipes will be parsed from.
 Run this script from the root of the definitions directory.
     '''
+    print usage
 
 def parse_chunk(defs, chunk_data):
     "Adds the chunk definition to defs if not already in"
