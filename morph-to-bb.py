@@ -169,14 +169,18 @@ def write_package(package, packages_dir):
         f.write(package_text)
 
 def write_recipes(recipes, recipes_dir):
-    os.makedirs(recipes_dir)
+    if not os.path.exists(recipes_dir):
+        os.makedirs(recipes_dir)
     images_dir = "%s/images" % recipes_dir
     packagegroups_dir = "%s/packagegroups" % recipes_dir
     packages_dir = "%s/packages" % recipes_dir
 
-    os.mkdir(images_dir)
-    os.mkdir(packagegroups_dir)
-    os.mkdir(packages_dir)
+    if not os.path.exists(images_dir):
+        os.mkdir(images_dir)
+    if not os.path.exists(packagegroups_dir):
+        os.mkdir(packagegroups_dir)
+    if not os.path.exists(packages_dir):
+        os.mkdir(packages_dir)
 
     for image in recipes['images'].itervalues():
         write_image(image, images_dir)
@@ -199,6 +203,7 @@ def main(argv):
         sys.exit(1)
 
     recipes_dir = argv[0]
+
     defs = {'systems': {}, 'strata': {}, 'chunks': {}}
     recipes = {'images': {}, 'packagegroups': {}, 'packages': {}}
     for system_path in argv[1:]:
