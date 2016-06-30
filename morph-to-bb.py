@@ -49,6 +49,20 @@ def parse_chunk(defs, chunk_data):
     else:
         chunks[chunk['name']] = chunk
 
+def add_stratum_builddepends_to_chunks(defs, stratum):
+    if 'build-depends' in stratum:
+        chunks = defs['chunks']
+        for chunk_data in stratum['chunks']:
+            chunk_name = chunk_data['name']
+            if not chunk_name in chunks:
+                print "Error! Chunk not found with name '%s'" % chunk_name
+            chunk = chunks[chunk_name]
+            if not 'stratum-build-depends' in chunk:
+                chunk['stratum-build-depends'] = []
+                sbdarr = chunk['stratum-build-depends']
+                for stratum_bd in stratum['build-depends']:
+                    sbdarr.append(stratum_bd['morph'])
+
 def parse_stratum(defs, stratum_spec):
     "Adds the stratum definition in stratum_spec to defs if not already in"
     strata = defs['strata']
@@ -67,11 +81,12 @@ def parse_stratum(defs, stratum_spec):
         for chunk_data in stratum['chunks']:
             parse_chunk(defs, chunk_data)
 
+        add_stratum_builddepends_to_chunks(defs, stratum)
+
         # Strata can build-depend on strata that aren't part of the system
         if 'build-depends' in stratum:
             for bd_spec in stratum['build-depends']:
                 parse_stratum(defs, bd_spec)
-
 
 def parse_system(defs, system_path):
     "Adds the system definition in system_path to defs if not already in"
