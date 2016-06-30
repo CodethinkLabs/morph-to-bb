@@ -13,19 +13,40 @@ Run this script from the root of the definitions directory.
 
 def parse_chunk(defs, chunk_data):
     "Adds the chunk definition to defs if not already in"
+    # Create a chunk from stratum data and merge it with the chunk file data.
+    # Since I can be parsing multiple strata that may have duplicate
+    # definitions of chunks, I'll need to check they're identical, and
+    # warn when non-identical chunk data appears with the same name.
+    # Therefore, chunks are keyed by name, not path.
     chunks = defs['chunks']
+    chunk = dict(chunk_data)
     if 'morph' in chunk_data:
         chunk_path = chunk_data['morph']
-        if not chunk_path in chunks:
-            chunk = yaml.load(file(chunk_path, 'r'))
-            if chunk['kind'] != "chunk":
-                print chunk_path, "is not a chunk!"
-                sys.exit(1)
+        loaded_chunk = yaml.load(file(chunk_path, 'r'))
+        if loaded_chunk['kind'] != "chunk":
+            print chunk_path, "is not a chunk!"
+            sys.exit(1)
 
-            if chunk_data['name'] != chunk['name']:
-                print "Mismatched names in", chunk_path, "!"
+        if loaded_chunk['name'] != chunk['name']:
+            print "Mismatched names in %s !" % chunk_path
 
-            chunks[chunk_path] = chunk
+        for key, value in loaded_chunk.iteritems():
+            if key not in chunk:
+                chunk[key] = value
+
+    # TODO: Merge in defaults
+
+    if chunk['name'] in chunks:
+        # Possibly identical chunk
+        if chunk != chunks[chunk['name']]:
+            print "WARNING! Two chunks exist with the same name!"
+            print "=== Old Chunk ==="
+            print yaml.dump(chunks[chunk['name']])
+            print "=== New Chunk ==="
+            print yaml.dump(chunk)
+            print "Only the old chunk will be kept"
+    else:
+        chunks[chunk['name']] = chunk
 
 def parse_stratum(defs, stratum_spec):
     "Adds the stratum definition in stratum_spec to defs if not already in"
