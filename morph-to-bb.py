@@ -14,17 +14,18 @@ Run this script from the root of the definitions directory.
 def parse_chunk(defs, chunk_data):
     "Adds the chunk definition to defs if not already in"
     chunks = defs['chunks']
-    chunk_path = chunk_data['morph']
-    if not chunk_path in chunks:
-        chunk = yaml.load(file(chunk_path, 'r'))
-        if chunk['kind'] != "chunk":
-            print chunk_path, "is not a chunk!"
-            sys.exit(1)
+    if 'morph' in chunk_data:
+        chunk_path = chunk_data['morph']
+        if not chunk_path in chunks:
+            chunk = yaml.load(file(chunk_path, 'r'))
+            if chunk['kind'] != "chunk":
+                print chunk_path, "is not a chunk!"
+                sys.exit(1)
 
-        if chunk_data['name'] != chunk['name']:
-            print "Mismatched names in", chunk_path, "!"
+            if chunk_data['name'] != chunk['name']:
+                print "Mismatched names in", chunk_path, "!"
 
-        chunks[chunk_path] = chunk
+            chunks[chunk_path] = chunk
 
 def parse_stratum(defs, stratum_spec):
     "Adds the stratum definition in stratum_spec to defs if not already in"
@@ -37,12 +38,17 @@ def parse_stratum(defs, stratum_spec):
             print stratum_path, "is not a stratum!"
             sys.exit(1)
 
-        if stratum_spec['name'] != stratum['name']:
+        if 'name' in stratum_spec and stratum_spec['name'] != stratum['name']:
             print "Mismatched names in", stratum_path, "!"
 
         strata[stratum_path] = stratum
         for chunk_data in stratum['chunks']:
             parse_chunk(defs, chunk_data)
+
+        # Strata can build-depend on strata that aren't part of the system
+        if 'build-depends' in stratum:
+            for bd_spec in stratum['build-depends']:
+                parse_stratum(defs, bd_spec)
 
 
 def parse_system(defs, system_path):
@@ -67,8 +73,27 @@ def convert_system_to_image(recipes, system):
             'arch': system['arch'],
             'image_install': image_install}
 
-def convert_stratum_to_packagegroup(stratum):
-    return {'name': stratum['name']+"-stratum"}
+def convert_stratum_to_packagegroup(defs, stratum):
+    depends = []
+    rdepends = []
+    # Add the stratum's build-depends as DEPENDS
+    if 'build-depends' in stratum:
+        for stratum_spec in stratum['build-depends']:
+            stratum_path = stratum_spec['morph']
+            if not stratum_path in defs['strata']:
+                print "Stratum %s could not be found!" % stratum_path
+                sys.exit(1)
+            dep_stratum = defs['strata'][stratum_path]
+            depends.append("%s-stratum" % dep_stratum['name'])
+
+    # Add the stratum's chunks as DEPENDS and RDEPENDS
+    for chunk_spec in stratum['chunks']:
+        depends.append("%s-chunk" % chunk_spec['name'])
+        rdepends.append("%s-chunk" % chunk_spec['name'])
+
+    return {'name': stratum['name']+"-stratum",
+            'depends': depends,
+            'rdepends': rdepends}
 
 def convert_chunk_to_package(chunk):
     return {'name': chunk['name']+"-chunk"}
@@ -80,7 +105,7 @@ def convert_defs_to_recipes(defs, recipes):
         package = convert_chunk_to_package(chunk)
         recipes['packages'][package['name']] = package
     for stratum in defs['strata'].itervalues():
-        packagegroup = convert_stratum_to_packagegroup(stratum)
+        packagegroup = convert_stratum_to_packagegroup(defs, stratum)
         recipes['packagegroups'][packagegroup['name']] = packagegroup
     for system in defs['systems'].itervalues():
         image = convert_system_to_image(recipes, system)
@@ -94,15 +119,21 @@ inherit core-image #This might need to be just "image" with more stuff set
 IMAGE_INSTALL = "{packagegroups}"
 # IMAGE_ROOTFS_SIZE not sure if mandatory
     '''.format(name=image['name'],
-            packagegroups=" ".join(image['image_install']))
+        packagegroups=" ".join(image['image_install']))
     image_path = "%s/%s.bb" % (images_dir, image['name'])
     with open(image_path, 'w') as f:
         f.write(image_text)
 
 def write_packagegroup(packagegroup, pg_dir):
     pg_text = '''
-# packagegroup
-    '''
+SUMMARY = "{name}
+PACKAGE_ARCH = "${{MACHINE_ARCH}}"
+inherit packagegroup
+RDEPENDS_${{PN}} = "{rdepends}"
+DEPENDS_${{PN}} = "{depends}"
+    '''.format(name=packagegroup['name'],
+        rdepends=packagegroup['rdepends'],
+        depends=packagegroup['depends'])
     pg_path = "%s/%s.bb" % (pg_dir, packagegroup['name'])
     with open (pg_path, 'w') as f:
         f.write(pg_text)
