@@ -21,6 +21,8 @@ def parse_chunk(defs, chunk_data):
     # Therefore, chunks are keyed by name, not path.
     chunks = defs['chunks']
     chunk = dict(chunk_data)
+
+    # Merge stratum's chunk spec with data from morph file
     if 'morph' in chunk_data:
         chunk_path = chunk_data['morph']
         loaded_chunk = yaml.load(file(chunk_path, 'r'))
@@ -35,7 +37,13 @@ def parse_chunk(defs, chunk_data):
             if key not in chunk:
                 chunk[key] = value
 
-    # TODO: Merge in defaults
+    # Merge in defaults
+    if ('build-system' in chunk 
+    and chunk['build-system'] in defs['defaults']['build-systems']):
+        buildsys = defs['defaults']['build-systems'][chunk['build-system']]
+        for cmdname in ('configure-commands', 'build-commands', 'install-commands'):
+            if (not cmdname in chunk) and (cmdname in buildsys):
+                chunk[cmdname] = buildsys[cmdname]
 
     if chunk['name'] in chunks:
         # Possibly identical chunk
@@ -132,9 +140,19 @@ def convert_stratum_to_packagegroup(defs, stratum):
             'depends': depends,
             'rdepends': rdepends}
 
+def substitute_command_variables(cmds):
+    new_cmds = []
+    for cmd in cmds:
+        cmd = cmd.replace(r"$DESTDIR", r"${D}")
+        cmd = cmd.replace(r"$PREFIX", r"${prefix}")
+        new_cmds.append(cmd)
+
+    return new_cmds
+
 def convert_chunk_to_package(defs, chunk):
     # Chunks don't have RDEPENDS, that's handled by strata.
     strata = defs['strata']
+    # Construct DEPENDS
     depends = []
     if 'build-depends' in chunk:
         for build_depend in chunk['build-depends']:
@@ -147,8 +165,29 @@ def convert_chunk_to_package(defs, chunk):
                 sys.exit(1)
             stratum = strata[stratum_build_depend]
             depends.append('%s-stratum' % stratum['name'])
-    return {'name': chunk['name']+"-chunk",
-            'depends': depends}
+
+    recipe = {'name': chunk['name']+"-chunk",
+              'depends': depends}
+
+    # construct commands
+    cmdmap = {"configure-commands": "do_configure",
+              "build-commands": "do_compile",
+              "install-commands": "do_install"}
+    for morphcmd, bbcmd in cmdmap.iteritems():
+        cmds = []
+        precmd = "pre-%s" % morphcmd
+        postcmd = "post-%s" % morphcmd
+        if precmd in chunk:
+            cmds += chunk[precmd]
+        if morphcmd in chunk:
+            cmds += chunk[morphcmd]
+        if postcmd in chunk:
+            cmds += chunk[postcmd]
+        if len(cmds) > 0:
+            cmds = substitute_command_variables(cmds)
+            recipe[bbcmd] = cmds
+
+    return recipe
 
 def convert_defs_to_recipes(defs, recipes):
     # This ordering is deliberate. generation of packagegroups might require
@@ -197,6 +236,16 @@ DEPENDS_${{PN}} = "{depends}"
     '''.format(name=package['name'],
         depends=" ".join(package['depends']))
     package_path = "%s/%s.bb" % (packages_dir, package['name'])
+
+    for step in ('do_configure', 'do_compile', 'do_install'):
+        if step in package:
+            append_text = '''
+{step}() {{
+\t{cmds}
+}}
+            '''.format(step=step, cmds="\n\t".join(package[step]))
+            package_text += append_text
+
     with open (package_path, 'w') as f:
         f.write(package_text)
 
@@ -238,6 +287,7 @@ def main(argv):
 
     defs = {'systems': {}, 'strata': {}, 'chunks': {}}
     recipes = {'images': {}, 'packagegroups': {}, 'packages': {}}
+    defs['defaults'] = yaml.load(file("DEFAULTS", 'r'))
     for system_path in argv[1:]:
         parse_system(defs, system_path)
 
