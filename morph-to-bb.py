@@ -132,14 +132,29 @@ def convert_stratum_to_packagegroup(defs, stratum):
             'depends': depends,
             'rdepends': rdepends}
 
-def convert_chunk_to_package(chunk):
-    return {'name': chunk['name']+"-chunk"}
+def convert_chunk_to_package(defs, chunk):
+    # Chunks don't have RDEPENDS, that's handled by strata.
+    strata = defs['strata']
+    depends = []
+    if 'build-depends' in chunk:
+        for build_depend in chunk['build-depends']:
+            depends.append('%s-chunk' % build_depend)
+    if 'stratum-build-depends' in chunk:
+        for stratum_build_depend in chunk['stratum-build-depends']:
+            # stratum_build_depend is a morph path, not a name.
+            if not stratum_build_depend in strata:
+                print "Stratum %s could not be found!" % stratum_build_depend
+                sys.exit(1)
+            stratum = strata[stratum_build_depend]
+            depends.append('%s-stratum' % stratum['name'])
+    return {'name': chunk['name']+"-chunk",
+            'depends': depends}
 
 def convert_defs_to_recipes(defs, recipes):
     # This ordering is deliberate. generation of packagegroups might require
     # looking in packages, etc.
     for chunk in defs['chunks'].itervalues():
-        package = convert_chunk_to_package(chunk)
+        package = convert_chunk_to_package(defs, chunk)
         recipes['packages'][package['name']] = package
     for stratum in defs['strata'].itervalues():
         packagegroup = convert_stratum_to_packagegroup(defs, stratum)
@@ -163,7 +178,7 @@ IMAGE_INSTALL = "{packagegroups}"
 
 def write_packagegroup(packagegroup, pg_dir):
     pg_text = '''
-SUMMARY = "{name}
+SUMMARY = "{name}"
 PACKAGE_ARCH = "${{MACHINE_ARCH}}"
 inherit packagegroup
 RDEPENDS_${{PN}} = "{rdepends}"
@@ -177,8 +192,10 @@ DEPENDS_${{PN}} = "{depends}"
 
 def write_package(package, packages_dir):
     package_text = '''
-# package
-    '''
+SUMMARY = "{name}"
+DEPENDS_${{PN}} = "{depends}"
+    '''.format(name=package['name'],
+        depends=" ".join(package['depends']))
     package_path = "%s/%s.bb" % (packages_dir, package['name'])
     with open (package_path, 'w') as f:
         f.write(package_text)
