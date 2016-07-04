@@ -249,10 +249,57 @@ DEPENDS_${{PN}} = "{depends}"
     with open (package_path, 'w') as f:
         f.write(package_text)
 
+def write_conf(recipes, confdir):
+    bblayers_file = "bblayers.conf.sample"
+    bblayers_txt = '''\
+BBPATH = "${TOPDIR}"
+BBFILES ?= ""
+BBLAYERS = " \\
+    ##OEROOT##/meta \\
+    ##OEROOT##/../recipes/meta-definitions \\
+    "
+BBLAYERS_NON_REMOVABLE = " \\
+    ##OEROOT##/meta \\
+    ##OEROOT##/../recipes/meta-definitions \\
+    "
+'''
+    layerconf_file = "layer.conf"
+    layerconf_txt = '''\
+BBPATH ?= ""
+BBPATH .= ":${LAYERDIR}"
+BBFILES += "${LAYERDIR}/*/*.bb"
+BBFILE_COLLECTIONS += "baserock"
+BBFILE_PATTERN_baserock := "^${LAYERDIR}/"
+'''
+    localconf_file = "local.conf.sample"
+    localconf_txt = '''\
+MACHINE ??= "qemux86-64"
+'''
+    conf_notes_file = "conf-notes.txt"
+    conf_notes_txt = '''\
+Supported targets are:
+    {}
+'''.format("\n    ".join(recipes['images'].iterkeys()))
+
+    if not os.path.exists(confdir):
+        os.mkdir(confdir)
+
+    with open("%s/%s" % (confdir, bblayers_file), 'w') as f:
+        f.write(bblayers_txt)
+    with open("%s/%s" % (confdir, layerconf_file), 'w') as f:
+        f.write(layerconf_txt)
+    with open("%s/%s" % (confdir, localconf_file), 'w') as f:
+        f.write(localconf_txt)
+    with open("%s/%s" % (confdir, conf_notes_file), 'w') as f:
+        f.write(conf_notes_txt)
+
 def write_recipes(recipes, recipes_dir):
     metadir = "%s/meta-definitions" % recipes_dir
     if not os.path.exists(metadir):
         os.makedirs(metadir)
+
+    write_conf(recipes, "%s/conf" % metadir)
+
     images_dir = "%s/images" % metadir
     packagegroups_dir = "%s/packagegroups" % metadir
     packages_dir = "%s/packages" % metadir
