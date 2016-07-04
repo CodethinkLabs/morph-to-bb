@@ -250,11 +250,12 @@ DEPENDS_${{PN}} = "{depends}"
         f.write(package_text)
 
 def write_recipes(recipes, recipes_dir):
-    if not os.path.exists(recipes_dir):
-        os.makedirs(recipes_dir)
-    images_dir = "%s/images" % recipes_dir
-    packagegroups_dir = "%s/packagegroups" % recipes_dir
-    packages_dir = "%s/packages" % recipes_dir
+    metadir = "%s/meta-definitions" % recipes_dir
+    if not os.path.exists(metadir):
+        os.makedirs(metadir)
+    images_dir = "%s/images" % metadir
+    packagegroups_dir = "%s/packagegroups" % metadir
+    packages_dir = "%s/packages" % metadir
 
     if not os.path.exists(images_dir):
         os.mkdir(images_dir)
