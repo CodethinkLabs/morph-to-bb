@@ -226,9 +226,10 @@ def convert_defs_to_recipes(defs, recipes):
         recipes['images'][image['name']] = image
 
 def write_image(image, images_dir):
-    image_text = '''
+    image_text = '''\
 SUMMARY = "{name}"
-inherit core-image #This might need to be just "image" with more stuff set
+# maybe "image" is a better fit than core-image.
+inherit core-image
 # LICENSE = "foo" Might already be set by other classes
 IMAGE_INSTALL = "{packagegroups}"
 # IMAGE_ROOTFS_SIZE not sure if mandatory
