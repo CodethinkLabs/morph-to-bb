@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-import os, sys, yaml
+import os, sys, yaml, re
 
 def print_usage():
     usage = '''
@@ -140,11 +140,12 @@ def convert_stratum_to_packagegroup(defs, stratum):
             'depends': depends,
             'rdepends': rdepends}
 
-def substitute_command_variables(cmds):
+def translate_commands(cmds):
     new_cmds = []
     for cmd in cmds:
         cmd = cmd.replace(r"$DESTDIR", r"${D}")
         cmd = cmd.replace(r"$PREFIX", r"${prefix}")
+        cmd = re.sub("`[^`]+`", "", cmd)
         new_cmds.append(cmd)
 
     return new_cmds
@@ -206,7 +207,7 @@ def convert_chunk_to_package(defs, chunk):
         if postcmd in chunk:
             cmds += chunk[postcmd]
         if len(cmds) > 0:
-            cmds = substitute_command_variables(cmds)
+            cmds = translate_commands(cmds)
             recipe[bbcmd] = cmds
 
     return recipe
