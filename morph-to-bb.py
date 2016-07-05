@@ -230,9 +230,10 @@ DEPENDS_${{PN}} = "{depends}"
         f.write(pg_text)
 
 def write_package(package, packages_dir):
-    package_text = '''
+    package_text = '''\
 SUMMARY = "{name}"
 DEPENDS_${{PN}} = "{depends}"
+LICENSE = "closed"
     '''.format(name=package['name'],
         depends=" ".join(package['depends']))
     package_path = "%s/%s.bb" % (packages_dir, package['name'])
