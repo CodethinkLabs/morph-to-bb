@@ -149,6 +149,26 @@ def substitute_command_variables(cmds):
 
     return new_cmds
 
+# Copied from ybd source and adapted
+def get_repo_url(repo):
+    aliases = {"baserock:": "git://git.baserock.org/baserock/",
+            "upstream:": "git://git.baserock.org/delta/",
+            "gitlab:": "ssh://git@ocelab.codethink.co.uk/"}
+    if repo:
+        for alias, url in aliases.items():
+            repo = repo.replace(alias, url)
+        if repo[:4] == "http" and not repo.endswith('.git'):
+            repo = repo + '.git'
+    return repo
+
+def generate_src_uri(chunk):
+    repo = get_repo_url(chunk['repo'])
+    if repo.startswith("ssh://"):
+        repo.replace("ssh://", "git://")
+        repo += ";protocol=ssh"
+
+    return repo
+
 def convert_chunk_to_package(defs, chunk):
     # Chunks don't have RDEPENDS, that's handled by strata.
     strata = defs['strata']
@@ -167,7 +187,9 @@ def convert_chunk_to_package(defs, chunk):
             depends.append('%s-stratum' % stratum['name'])
 
     recipe = {'name': chunk['name']+"-chunk",
-              'depends': depends}
+              'depends': depends,
+              'src_uri': generate_src_uri(chunk),
+              'srcrev': chunk['ref']}
 
     # construct commands
     cmdmap = {"configure-commands": "do_configure",
@@ -234,8 +256,12 @@ def write_package(package, packages_dir):
 SUMMARY = "{name}"
 DEPENDS_${{PN}} = "{depends}"
 LICENSE = "closed"
-    '''.format(name=package['name'],
-        depends=" ".join(package['depends']))
+SRC_URI = "{src_uri}"
+SRCREV = "{srcrev}"
+'''.format(name=package['name'],
+        depends=" ".join(package['depends']),
+        src_uri = package['src_uri'],
+        srcrev = package['srcrev'])
     package_path = "%s/%s.bb" % (packages_dir, package['name'])
 
     for step in ('do_configure', 'do_compile', 'do_install'):
