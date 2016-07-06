@@ -305,6 +305,7 @@ BBFILE_PATTERN_baserock := "^${LAYERDIR}/"
     localconf_file = "local.conf.sample"
     localconf_txt = '''\
 MACHINE ??= "qemux86-64"
+INHIBIT_DEFAULT_DEPS = "1"
 '''
     conf_notes_file = "conf-notes.txt"
     conf_notes_txt = '''\
