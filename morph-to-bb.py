@@ -260,6 +260,8 @@ DEPENDS_${{PN}} = "{depends}"
 LICENSE = "closed"
 SRC_URI = "{src_uri}"
 SRCREV = "{srcrev}"
+S = "${{WORKDIR}}/git"
+inherit native
 '''.format(name=package['name'],
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
