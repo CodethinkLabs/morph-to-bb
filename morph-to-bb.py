@@ -230,7 +230,7 @@ def write_image(image, images_dir):
 SUMMARY = "{name}"
 # maybe "image" is a better fit than core-image.
 inherit core-image
-# LICENSE = "foo" Might already be set by other classes
+LICENSE = "closed"
 IMAGE_INSTALL = "{packagegroups}"
 # IMAGE_ROOTFS_SIZE not sure if mandatory
     '''.format(name=image['name'],
