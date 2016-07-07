@@ -350,6 +350,45 @@ def write_recipes(recipes, recipes_dir):
     for package in recipes['packages'].itervalues():
         write_package(package, packages_dir)
 
+def strip_bootstrap_chunks(defs):
+    '''Remove chunks with "build-mode: bootstrap" because they're complicated and conflict with yocto's way of handling early builds'''
+    # Remove bootstrap chunks from any chunks' build-depends
+    for chunk in defs['chunks'].itervalues():
+        if 'build-depends' in chunk:
+            bad_chunks = []
+            for bd in chunk['build-depends']:
+                if not bd in defs['chunks']:
+                    print "Could not find %s in chunks!" % bd
+                    sys.exit(1)
+                depended_chunk = defs['chunks'][bd]
+                if 'build-mode' in depended_chunk \
+                and depended_chunk['build-mode'] == "bootstrap":
+                    bad_chunks.append(bd)
+            for bad_chunk in bad_chunks:
+                chunk['build-depends'].remove(bad_chunk)
+
+    # Remove bootstrap chunks from any strata
+    for stratum in defs['strata'].itervalues():
+        bad_chunks = []
+        if not 'chunks' in stratum:
+            print "Stratum has no chunks! I was not expecting this!"
+            print yaml.dump(stratum)
+            sys.exit(1)
+        for chunk in stratum['chunks']:
+            if 'build-mode' in chunk \
+            and chunk['build-mode'] == "bootstrap":
+                bad_chunks.append(chunk)
+        for bad_chunk in bad_chunks:
+            stratum['chunks'].remove(bad_chunk)
+
+    # Remove bootstrap chunks from defs
+    bad_chunks = []
+    for chunk in defs['chunks']:
+        if 'build-mode' in chunk and chunk['build-mode'] == "bootstrap":
+            bad_chunks.append(chunk)
+    for bad_chunk in bad_chunks:
+        defs['chunks'].remove(bad_chunk)
+
 def main(argv):
     # Arg 1, a directory to put recipes in
     # Arg 2..., Systems to parse
@@ -370,6 +409,8 @@ def main(argv):
     defs['defaults'] = yaml.load(file("DEFAULTS", 'r'))
     for system_path in argv[1:]:
         parse_system(defs, system_path)
+
+    strip_bootstrap_chunks(defs)
 
     convert_defs_to_recipes(defs, recipes)
 
