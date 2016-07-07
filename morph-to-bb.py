@@ -285,6 +285,7 @@ inherit native
 def write_conf(recipes, confdir):
     bblayers_file = "bblayers.conf.sample"
     bblayers_txt = '''\
+LCONF_VERSION = "6"
 BBPATH = "${TOPDIR}"
 BBFILES ?= ""
 BBLAYERS = " \\
@@ -308,6 +309,7 @@ BBFILE_PATTERN_baserock := "^${LAYERDIR}/"
     localconf_txt = '''\
 MACHINE ??= "qemux86-64"
 INHIBIT_DEFAULT_DEPS = "1"
+CONF_VERSION = "1"
 '''
     conf_notes_file = "conf-notes.txt"
     conf_notes_txt = '''\
