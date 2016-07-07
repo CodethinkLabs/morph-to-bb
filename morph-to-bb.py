@@ -247,8 +247,8 @@ inherit packagegroup
 RDEPENDS_${{PN}} = "{rdepends}"
 DEPENDS_${{PN}} = "{depends}"
     '''.format(name=packagegroup['name'],
-        rdepends=packagegroup['rdepends'],
-        depends=packagegroup['depends'])
+        rdepends=" ".join(packagegroup['rdepends']),
+        depends=" ".join(packagegroup['depends']))
     pg_path = "%s/%s.bb" % (pg_dir, packagegroup['name'])
     with open (pg_path, 'w') as f:
         f.write(pg_text)
