@@ -244,6 +244,7 @@ def write_packagegroup(packagegroup, pg_dir):
 SUMMARY = "{name}"
 PACKAGE_ARCH = "${{MACHINE_ARCH}}"
 inherit packagegroup
+LICENSE = "closed"
 RDEPENDS_${{PN}} = "{rdepends}"
 DEPENDS_${{PN}} = "{depends}"
     '''.format(name=packagegroup['name'],
