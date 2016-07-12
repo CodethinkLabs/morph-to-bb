@@ -236,7 +236,7 @@ def write_image(image, images_dir):
 SUMMARY = "{name}"
 # maybe "image" is a better fit than core-image.
 inherit core-image
-LICENSE = "closed"
+LICENSE = "CLOSED"
 IMAGE_INSTALL = "{packagegroups}"
 # IMAGE_ROOTFS_SIZE not sure if mandatory
     '''.format(name=image['name'],
@@ -250,7 +250,7 @@ def write_packagegroup(packagegroup, pg_dir):
 SUMMARY = "{name}"
 PACKAGE_ARCH = "${{MACHINE_ARCH}}"
 inherit packagegroup
-LICENSE = "closed"
+LICENSE = "CLOSED"
 RDEPENDS_${{PN}} = "{rdepends}"
 DEPENDS_${{PN}} = "{depends}"
     '''.format(name=packagegroup['name'],
@@ -264,7 +264,7 @@ def write_package(package, packages_dir):
     package_text = '''\
 SUMMARY = "{name}"
 DEPENDS_${{PN}} = "{depends}"
-LICENSE = "closed"
+LICENSE = "CLOSED"
 SRC_URI = "{src_uri}"
 SRCREV = "{srcrev}"
 S = "${{WORKDIR}}/git"
