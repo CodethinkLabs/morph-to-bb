@@ -268,9 +268,6 @@ LICENSE = "CLOSED"
 SRC_URI = "{src_uri}"
 SRCREV = "{srcrev}"
 S = "${{WORKDIR}}/git"
-PROVIDES = "${{PN}}"
-RPROVIDES = "${{PN}}"
-inherit native
 '''.format(name=package['name'],
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
