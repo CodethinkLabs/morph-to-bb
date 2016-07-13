@@ -171,8 +171,10 @@ def generate_src_uri(chunk):
     if repo.startswith("ssh://"):
         repo.replace("ssh://", "git://")
         repo += ";protocol=ssh"
-    if 'unpetrify-ref' in chunk:
-        repo += ";branch=%s" % chunk['unpetrify-ref']
+
+    # Foils bitbake's branch-checking which seems to be entirely
+    # superfluous
+    repo += r";branch=\*"
 
     return repo
 
