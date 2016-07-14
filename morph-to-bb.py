@@ -282,7 +282,7 @@ do_patch[noexec] = "1"
 {step}() {{
 \t{cmds}
 }}
-        '''.format(step=step, cmds="\n\t".join(package.get('step', '')))
+        '''.format(step=step, cmds="\n\t".join(package.get(step, '')))
         package_text += append_text
 
     with open (package_path, 'w') as f:
