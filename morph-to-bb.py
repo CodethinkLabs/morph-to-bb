@@ -270,6 +270,7 @@ LICENSE = "CLOSED"
 SRC_URI = "{src_uri}"
 SRCREV = "{srcrev}"
 S = "${{WORKDIR}}/git"
+do_patch[noexec] = "1"
 '''.format(name=package['name'],
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
