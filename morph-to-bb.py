@@ -277,13 +277,12 @@ S = "${{WORKDIR}}/git"
     package_path = "%s/%s.bb" % (packages_dir, package['name'])
 
     for step in ('do_configure', 'do_compile', 'do_install'):
-        if step in package:
-            append_text = '''
+        append_text = '''
 {step}() {{
 \t{cmds}
 }}
-            '''.format(step=step, cmds="\n\t".join(package[step]))
-            package_text += append_text
+        '''.format(step=step, cmds="\n\t".join(package.get('step', '')))
+        package_text += append_text
 
     with open (package_path, 'w') as f:
         f.write(package_text)
