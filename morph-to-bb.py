@@ -254,7 +254,7 @@ PACKAGE_ARCH = "${{MACHINE_ARCH}}"
 inherit packagegroup
 LICENSE = "CLOSED"
 RDEPENDS_${{PN}} = "{rdepends}"
-DEPENDS_${{PN}} = "{depends}"
+DEPENDS = "{depends}"
     '''.format(name=packagegroup['name'],
         rdepends=" ".join(packagegroup['rdepends']),
         depends=" ".join(packagegroup['depends']))
@@ -265,7 +265,7 @@ DEPENDS_${{PN}} = "{depends}"
 def write_package(package, packages_dir):
     package_text = '''\
 SUMMARY = "{name}"
-DEPENDS_${{PN}} = "{depends}"
+DEPENDS = "{depends}"
 LICENSE = "CLOSED"
 SRC_URI = "{src_uri}"
 SRCREV = "{srcrev}"
