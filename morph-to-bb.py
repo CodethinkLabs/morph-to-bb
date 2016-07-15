@@ -278,11 +278,14 @@ do_patch[noexec] = "1"
     package_path = "%s/%s.bb" % (packages_dir, package['name'])
 
     for step in ('do_configure', 'do_compile', 'do_install'):
-        append_text = '''
+        if step in package:
+            append_text = '''
 {step}() {{
 \t{cmds}
 }}
-        '''.format(step=step, cmds="\n\t".join(package.get(step, '')))
+'''.format(step=step, cmds="\n\t".join(package.get(step, '')))
+        else:
+            append_text = '''{step}[noexec] = "1"\n'''.format(step=step)
         package_text += append_text
 
     with open (package_path, 'w') as f:
