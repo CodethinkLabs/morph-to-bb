@@ -130,7 +130,7 @@ def convert_stratum_to_packagegroup(defs, stratum):
         for stratum_spec in stratum['build-depends']:
             stratum_path = stratum_spec['morph']
             if not stratum_path in defs['strata']:
-                print "Stratum %s could not be found!" % stratum_path
+                print "Stratum %s could not be found when depended by %s!" % (stratum_path, stratum['name'])
                 sys.exit(1)
             dep_stratum = defs['strata'][stratum_path]
             depends.append("%s-stratum" % dep_stratum['name'])
@@ -190,7 +190,7 @@ def convert_chunk_to_package(defs, chunk):
         for stratum_build_depend in chunk['stratum-build-depends']:
             # stratum_build_depend is a morph path, not a name.
             if not stratum_build_depend in strata:
-                print "Stratum %s could not be found!" % stratum_build_depend
+                print "Stratum %s could not be found when sought by %s!" % (stratum_build_depend, chunk['name'])
                 sys.exit(1)
             stratum = strata[stratum_build_depend]
             depends.append(translate_name('%s-stratum' % stratum['name']))
