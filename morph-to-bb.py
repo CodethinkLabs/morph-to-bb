@@ -363,44 +363,43 @@ def write_recipes(recipes, recipes_dir):
     for package in recipes['packages'].itervalues():
         write_package(package, packages_dir)
 
-def strip_bootstrap_chunks(defs):
-    '''Remove chunks with "build-mode: bootstrap" because they're complicated and conflict with yocto's way of handling early builds'''
-    # Remove bootstrap chunks from any chunks' build-depends
-    for chunk in defs['chunks'].itervalues():
-        if 'build-depends' in chunk:
-            bad_chunks = []
-            for bd in chunk['build-depends']:
-                if not bd in defs['chunks']:
-                    print "Could not find %s in chunks!" % bd
-                    sys.exit(1)
-                depended_chunk = defs['chunks'][bd]
-                if 'build-mode' in depended_chunk \
-                and depended_chunk['build-mode'] == "bootstrap":
-                    bad_chunks.append(bd)
-            for bad_chunk in bad_chunks:
-                chunk['build-depends'].remove(bad_chunk)
+def strip_build_essential(defs):
+    '''
+    Bitbake provides its own build-essentials which are deeply tied to the
+    rest of the bitbake classes. Duplicating the work causes bad things to
+    happen, notably with linux-api-headers.
+    '''
+    # Remove all the dependency on build-essential
+    be_path = "strata/build-essential.morph"
+    systems = defs['systems']
+    strata = defs['strata']
+    chunks = defs['chunks']
+    # Systems can include strata.
+    for system in systems.itervalues():
+        for stratum_spec in system['strata'][:]:
+            if stratum_spec['name'] == "build-essential":
+                system['strata'].remove(stratum_spec)
 
-    # Remove bootstrap chunks from any strata
-    for stratum in defs['strata'].itervalues():
-        bad_chunks = []
-        if not 'chunks' in stratum:
-            print "Stratum has no chunks! I was not expecting this!"
-            print yaml.dump(stratum)
-            sys.exit(1)
-        for chunk in stratum['chunks']:
-            if 'build-mode' in chunk \
-            and chunk['build-mode'] == "bootstrap":
-                bad_chunks.append(chunk)
-        for bad_chunk in bad_chunks:
-            stratum['chunks'].remove(bad_chunk)
+    # Strata can build-depend on strata.
+    for stratum in strata.itervalues():
+        if 'build-depends' in stratum:
+            for bd in stratum['build-depends'][:]:
+                if bd['morph'] == be_path:
+                    stratum['build-depends'].remove(bd)
 
-    # Remove bootstrap chunks from defs
-    bad_chunks = []
-    for chunk in defs['chunks']:
-        if 'build-mode' in chunk and chunk['build-mode'] == "bootstrap":
-            bad_chunks.append(chunk)
-    for bad_chunk in bad_chunks:
-        defs['chunks'].remove(bad_chunk)
+    # Chunks have been given stratum-build-depends
+    for chunk in chunks.itervalues():
+        if 'stratum-build-depends' in chunk:
+            if be_path in chunk['stratum-build-depends']:
+                chunk['stratum-build-depends'].remove(be_path)
+
+    # Remove all chunks that are in build-essential
+    be_stratum = strata['strata/build-essential.morph']
+    for chunk in be_stratum['chunks']:
+        chunks.pop(chunk['name'])
+
+    # Remove build-essential from strata
+    strata.pop('strata/build-essential.morph')
 
 def main(argv):
     # Arg 1, a directory to put recipes in
@@ -423,7 +422,7 @@ def main(argv):
     for system_path in argv[1:]:
         parse_system(defs, system_path)
 
-    strip_bootstrap_chunks(defs)
+    strip_build_essential(defs)
 
     convert_defs_to_recipes(defs, recipes)
 
