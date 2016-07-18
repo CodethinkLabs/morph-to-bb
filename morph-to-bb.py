@@ -329,6 +329,8 @@ export MORPH_ARCH ??= "x86_64"
 MACHINE ??= "qemu${MORPH_ARCH}"
 CONF_VERSION = "1"
 '''
+    for package_name in recipes['packages'].iterkeys():
+        localconf_txt += ('PREFERRED_VERSION_%s = "baserock"\n' % package_name)
     conf_notes_file = "conf-notes.txt"
     conf_notes_txt = '''\
 Supported targets are:
