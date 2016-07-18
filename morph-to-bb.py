@@ -112,13 +112,22 @@ def translate_name(name):
     "Replaces underscores with hyphens because underscores are magic in bitbake"
     return name.replace("_", "-")
 
+def name_chunk(name):
+    return translate_name("{}".format(name))
+
+def name_stratum(name):
+    return translate_name("{}-stratum".format(name))
+
+def name_system(name):
+    return translate_name("{}".format(name))
+
 def convert_system_to_image(recipes, system):
     image_install = []
     for stratum_spec in system['strata']:
-        stratum_name = translate_name(stratum_spec['name'] + "-stratum")
+        stratum_name = name_stratum(stratum_spec['name'])
         image_install.append(stratum_name)
 
-    return {'name': translate_name(system['name']+"-system"),
+    return {'name': name_system(system['name']),
             'arch': system['arch'],
             'image_install': image_install}
 
@@ -137,10 +146,10 @@ def convert_stratum_to_packagegroup(defs, stratum):
 
     # Add the stratum's chunks as DEPENDS and RDEPENDS
     for chunk_spec in stratum['chunks']:
-        depends.append(translate_name("%s-chunk" % chunk_spec['name']))
-        rdepends.append(translate_name("%s-chunk" % chunk_spec['name']))
+        depends.append(name_chunk(chunk_spec['name']))
+        rdepends.append(name_chunk(chunk_spec['name']))
 
-    return {'name': translate_name(stratum['name']+"-stratum"),
+    return {'name': name_stratum(stratum['name']),
             'depends': depends,
             'rdepends': rdepends}
 
@@ -185,7 +194,7 @@ def convert_chunk_to_package(defs, chunk):
     depends = []
     if 'build-depends' in chunk:
         for build_depend in chunk['build-depends']:
-            depends.append(translate_name('%s-chunk' % build_depend))
+            depends.append(name_chunk(build_depend))
     if 'stratum-build-depends' in chunk:
         for stratum_build_depend in chunk['stratum-build-depends']:
             # stratum_build_depend is a morph path, not a name.
@@ -193,9 +202,9 @@ def convert_chunk_to_package(defs, chunk):
                 print "Stratum %s could not be found when sought by %s!" % (stratum_build_depend, chunk['name'])
                 sys.exit(1)
             stratum = strata[stratum_build_depend]
-            depends.append(translate_name('%s-stratum' % stratum['name']))
+            depends.append(name_stratum(stratum['name']))
 
-    recipe = {'name': translate_name(chunk['name']+"-chunk"),
+    recipe = {'name': name_chunk(chunk['name']),
               'depends': depends,
               'src_uri': generate_src_uri(chunk),
               'srcrev': chunk['ref']}
