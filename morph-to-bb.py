@@ -284,7 +284,7 @@ do_patch[noexec] = "1"
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
         srcrev = package['srcrev'])
-    package_path = "%s/%s.bb" % (packages_dir, package['name'])
+    package_path = "%s/%s_baserock.bb" % (packages_dir, package['name'])
 
     for step in ('do_configure', 'do_compile', 'do_install'):
         if step in package:
