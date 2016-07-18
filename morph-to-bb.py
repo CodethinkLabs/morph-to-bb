@@ -326,7 +326,7 @@ BBFILE_PATTERN_baserock := "^${LAYERDIR}/"
     localconf_file = "local.conf.sample"
     localconf_txt = '''\
 export MORPH_ARCH ??= "x86_64"
-MACHINE ??= "qemu${MORPH_ARCH}"
+MACHINE ??= "qemux86-64"
 CONF_VERSION = "1"
 '''
     for package_name in recipes['packages'].iterkeys():
