@@ -12,6 +12,21 @@ Run this script from the root of the definitions directory.
     '''
     print usage
 
+def map_build_system(buildsys):
+    mapping = {
+        "autotools": "autotools",
+        "python-distutils": "pythonnative",
+        "python3-distutils": "python3native",
+        "cpan": None,
+        "module-build": None,
+        "cmake": "cmake",
+        "qmake": "qmake2",
+    }
+    if buildsys in mapping:
+        return mapping[buildsys]
+    else:
+        return None
+
 def parse_chunk(defs, chunk_data):
     "Adds the chunk definition to defs if not already in"
     # Create a chunk from stratum data and merge it with the chunk file data.
@@ -38,13 +53,6 @@ def parse_chunk(defs, chunk_data):
                 chunk[key] = value
 
     # Merge in defaults
-    if ('build-system' in chunk 
-    and chunk['build-system'] in defs['defaults']['build-systems']):
-        buildsys = defs['defaults']['build-systems'][chunk['build-system']]
-        for cmdname in ('configure-commands', 'build-commands', 'install-commands'):
-            if (not cmdname in chunk) and (cmdname in buildsys):
-                chunk[cmdname] = buildsys[cmdname]
-
     if chunk['name'] in chunks:
         # Possibly identical chunk
         if chunk != chunks[chunk['name']]:
@@ -187,6 +195,21 @@ def generate_src_uri(chunk):
 
     return repo
 
+def get_buildsystem_defaults(defs, chunk):
+    if ('build-system' in chunk 
+    and chunk['build-system'] in defs['defaults']['build-systems']):
+        cmds = {'configure-commands': None, 'build-commands': None, 'install-commands': None}
+        buildsys = defs['defaults']['build-systems'][chunk['build-system']]
+        for cmdname in cmds.iterkeys():
+            if cmdname in chunk:
+                cmds[cmdname] = chunk[cmdname]
+            elif cmdname in buildsys:
+                cmds[cmdname] = buildsys[cmdname]
+            if (not cmdname in chunk) and (cmdname in buildsys):
+                chunk[cmdname] = buildsys[cmdname]
+    return cmds
+
+
 def convert_chunk_to_package(defs, chunk):
     # Chunks don't have RDEPENDS, that's handled by strata.
     strata = defs['strata']
@@ -207,25 +230,34 @@ def convert_chunk_to_package(defs, chunk):
     recipe = {'name': name_chunk(chunk['name']),
               'depends': depends,
               'src_uri': generate_src_uri(chunk),
-              'srcrev': chunk['ref']}
+              'srcrev': chunk['ref'],
+              'classes': []}
 
     # construct commands
-    cmdmap = {"configure-commands": "do_configure",
-              "build-commands": "do_compile",
-              "install-commands": "do_install"}
+    cmdmap = {
+        "pre-configure-commands": "do_configure_prepend",
+        "configure-commands": "do_configure",
+        "post-configure-commands": "do_configure_append",
+        "pre-build-commands": "do_compile_prepend",
+        "build-commands": "do_compile",
+        "post-build-commands": "do_compile_append",
+        "pre-install-commands": "do_install_prepend",
+        "install-commands": "do_install",
+        "post-install-commands": "do_install_append",
+    }
+    defaulted_cmds = {}
+    if 'build-system' in chunk:
+        bbclass = map_build_system(chunk['build-system'])
+        if bbclass:
+            recipe['classes'].append(bbclass)
+        else:
+            defaulted_cmds = get_buildsystem_defaults(defs, chunk)
+
     for morphcmd, bbcmd in cmdmap.iteritems():
-        cmds = []
-        precmd = "pre-%s" % morphcmd
-        postcmd = "post-%s" % morphcmd
-        if precmd in chunk:
-            cmds += chunk[precmd]
-        if morphcmd in chunk:
-            cmds += chunk[morphcmd]
-        if postcmd in chunk:
-            cmds += chunk[postcmd]
-        if len(cmds) > 0:
-            cmds = translate_commands(cmds)
-            recipe[bbcmd] = cmds
+        if morphcmd in defaulted_cmds:
+            recipe[bbcmd] = translate_commands(defaulted_cmds[morphcmd])
+        elif morphcmd in chunk:
+            recipe[bbcmd] = translate_commands(chunk[morphcmd])
 
     return recipe
 
@@ -272,6 +304,7 @@ DEPENDS = "{depends}"
         f.write(pg_text)
 
 def write_package(package, packages_dir):
+    package_path = "%s/%s_baserock.bb" % (packages_dir, package['name'])
     package_text = '''\
 SUMMARY = "{name}"
 DEPENDS = "{depends}"
@@ -283,18 +316,28 @@ do_patch[noexec] = "1"
 '''.format(name=package['name'],
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
-        srcrev = package['srcrev'])
-    package_path = "%s/%s_baserock.bb" % (packages_dir, package['name'])
+        srcrev = package['srcrev'],
+        classes = " ".join(package['classes']))
 
-    for step in ('do_configure', 'do_compile', 'do_install'):
+    if len(package['classes']) > 0:
+        package_text += "inherit %s\n" % " ".join(package['classes'])
+    steparr = [
+        'do_configure', 'do_configure_prepend', 'do_configure_append',
+        'do_compile', 'do_compile_prepend', 'do_compile_append',
+        'do_install', 'do_install_prepend', 'do_install_append'
+    ]
+    for step in steparr:
         if step in package:
             append_text = '''
 {step}() {{
 \t{cmds}
 }}
 '''.format(step=step, cmds="\n\t".join(package.get(step, '')))
-        else:
+        # Only for non-{pre,app}end steps, if there are no classes to define it.
+        elif len(package['classes']) == 0 and not step.endswith("_prepend") and not step.endswith("_append"):
             append_text = '''{step}[noexec] = "1"\n'''.format(step=step)
+        else:
+            append_text = ''
         package_text += append_text
 
     with open (package_path, 'w') as f:
