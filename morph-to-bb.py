@@ -327,7 +327,7 @@ do_patch[noexec] = "1"
         'do_install', 'do_install_prepend', 'do_install_append'
     ]
     for step in steparr:
-        if step in package:
+        if step in package and len(package[step]) > 0:
             append_text = '''
 {step}() {{
 \t{cmds}
