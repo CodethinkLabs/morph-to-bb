@@ -311,16 +311,16 @@ DEPENDS = "{depends}"
 LICENSE = "CLOSED"
 SRC_URI = "{src_uri}"
 SRCREV = "{srcrev}"
+{classes}
 S = "${{WORKDIR}}/git"
+B = "${{S}}"
 do_patch[noexec] = "1"
 '''.format(name=package['name'],
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
         srcrev = package['srcrev'],
-        classes = " ".join(package['classes']))
+        classes = ("inherit "+" ".join(package['classes']) if len(package['classes']) else ""))
 
-    if len(package['classes']) > 0:
-        package_text += "inherit %s\n" % " ".join(package['classes'])
     steparr = [
         'do_configure', 'do_configure_prepend', 'do_configure_append',
         'do_compile', 'do_compile_prepend', 'do_compile_append',
