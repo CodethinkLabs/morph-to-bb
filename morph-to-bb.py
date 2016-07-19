@@ -161,12 +161,19 @@ def convert_stratum_to_packagegroup(defs, stratum):
             'depends': depends,
             'rdepends': rdepends}
 
-def translate_commands(cmds):
+def translate_commands(cmds, chunk):
     new_cmds = []
     for cmd in cmds:
+        # Replace PREFIX and DESTDIR with poky equivalents
         cmd = cmd.replace(r"$DESTDIR", r"${D}")
         cmd = cmd.replace(r"$PREFIX", r"${prefix}")
+        # Remove subcommands because they're all empty and that confuses yocto
         cmd = re.sub("`[^`]+`", "", cmd)
+        # Insert "--host" to ./configure invocations
+        if "./configure" in cmd:
+            configure_string_start = cmd.find("./configure")
+            splitpos = configure_string_start + len("./configure")
+            cmd = cmd[:splitpos]+" --host=${HOST_SYS}"+cmd[splitpos:]
         new_cmds.append(cmd)
 
     return new_cmds
@@ -255,9 +262,9 @@ def convert_chunk_to_package(defs, chunk):
 
     for morphcmd, bbcmd in cmdmap.iteritems():
         if morphcmd in defaulted_cmds:
-            recipe[bbcmd] = translate_commands(defaulted_cmds[morphcmd])
+            recipe[bbcmd] = translate_commands(defaulted_cmds[morphcmd], chunk)
         elif morphcmd in chunk:
-            recipe[bbcmd] = translate_commands(chunk[morphcmd])
+            recipe[bbcmd] = translate_commands(chunk[morphcmd], chunk)
 
     return recipe
 
