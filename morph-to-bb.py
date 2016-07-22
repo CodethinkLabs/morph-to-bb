@@ -27,6 +27,16 @@ def map_build_system(buildsys):
     else:
         return None
 
+def map_chunk_name(name):
+    "Converts a chunk's name to the name of the equivalent bitbake recipe"
+    mapping = {
+        "openssl-new": "openssl"
+    }
+    if name in mapping:
+        return mapping[name]
+    else:
+        return name
+
 def parse_chunk(defs, chunk_data):
     "Adds the chunk definition to defs if not already in"
     # Create a chunk from stratum data and merge it with the chunk file data.
@@ -121,7 +131,7 @@ def translate_name(name):
     return name.replace("_", "-")
 
 def name_chunk(name):
-    return translate_name("{}".format(name))
+    return translate_name("{}".format(map_chunk_name(name)))
 
 def name_stratum(name):
     return translate_name("{}-stratum".format(name))
