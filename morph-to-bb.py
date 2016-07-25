@@ -179,11 +179,7 @@ def translate_commands(cmds, chunk):
         cmd = cmd.replace(r"$PREFIX", r"${prefix}")
         # Remove subcommands because they're all empty and that confuses yocto
         cmd = re.sub("`[^`]+`", "", cmd)
-        # Insert "--host" to ./configure invocations
-        if "./configure" in cmd:
-            configure_string_start = cmd.find("./configure")
-            splitpos = configure_string_start + len("./configure")
-            cmd = cmd[:splitpos]+" --host=${HOST_SYS}"+cmd[splitpos:]
+
         new_cmds.append(cmd)
 
     return new_cmds
@@ -225,6 +221,36 @@ def get_buildsystem_defaults(defs, chunk):
             if (not cmdname in chunk) and (cmdname in buildsys):
                 chunk[cmdname] = buildsys[cmdname]
     return cmds
+
+def sanitize_autotools(recipe):
+    "Split and extract args from the do_configure so I can use the default"
+    found_configure = False
+    for cmd in recipe['do_configure']:
+        if "./configure" in cmd:
+            configurepos = cmd.find("./configure")
+            # copy everything after ./configure into EXTRA_OECONF
+            extra_conf = cmd[configurepos+len("./configure"):]
+            # escape double-quotes
+            extra_conf = extra_conf.replace(r'"', r'\"')
+            # remove newlines from the end
+            if extra_conf.endswith("\n"):
+                extra_conf = extra_conf[:-1]
+            if len(extra_conf) > 0:
+                recipe['extra_oeconf'] = extra_conf
+            found_configure = True
+        elif not "autoreconf" in cmd and not found_configure:
+            # command is before "./configure", put in prepend
+            if not 'do_configure_prepend' in recipe:
+                recipe['do_configure_prepend'] = []
+            recipe['do_configure_prepend'].append(cmd)
+        elif not "autoreconf" in cmd and found_configure:
+            # command is after "./configure", put in append
+            if not 'do_configure_append' in recipe:
+                recipe['do_configure_append'] = []
+            recipe['do_configure_append'.insert(0, cmd)]
+        # only other default case is when it contains 'autoreconf'
+    # do_configure must be empty for autotools defaults to apply.
+    recipe['do_configure'] = []
 
 
 def convert_chunk_to_package(defs, chunk):
@@ -275,6 +301,11 @@ def convert_chunk_to_package(defs, chunk):
             recipe[bbcmd] = translate_commands(defaulted_cmds[morphcmd], chunk)
         elif morphcmd in chunk:
             recipe[bbcmd] = translate_commands(chunk[morphcmd], chunk)
+
+    if 'build-system' in chunk \
+    and chunk['build-system'] == "autotools" \
+    and 'do_configure' in recipe:
+        sanitize_autotools(recipe)
 
     return recipe
 
@@ -331,12 +362,14 @@ SRCREV = "{srcrev}"
 {classes}
 S = "${{WORKDIR}}/git"
 B = "${{S}}"
+{extra_oeconf}
 do_patch[noexec] = "1"
 '''.format(name=package['name'],
         depends=" ".join(package['depends']),
         src_uri = package['src_uri'],
         srcrev = package['srcrev'],
-        classes = ("inherit "+" ".join(package['classes']) if len(package['classes']) else ""))
+        classes = ("inherit "+" ".join(package['classes']) if len(package['classes']) else ""),
+        extra_oeconf = ('EXTRA_OECONF = "%s"' % package['extra_oeconf']) if 'extra_oeconf' in package else "")
 
     steparr = [
         'do_configure', 'do_configure_prepend', 'do_configure_append',
